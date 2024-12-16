@@ -35,6 +35,8 @@ While the app is in testing mode, in order to grant the add-on permission to acc
 
 Apps Script allows you to have any number of JavaScript files. There is no need to import functions or other symbols from one into another. At the moment, I'm not sure about the order of processing, but since most everything important should be inside function declarations, it probably doesn't matter.
 
+Try to keep Google app-specific functions in the appropriate files (eg `Gmail.js` and `Drive.js` but don't duplicate shared code -- use `Common.js` or we may choose to have more shared code files as things develop.)
+
 ### Tips for collaboration
 
 * If you edit files using the web-based Apps Script editor, you must still pull them to your local machine (using `clasp pull`) so that they can be pushed to the GitHub repository.

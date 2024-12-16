@@ -52,11 +52,6 @@
       "onItemsSelectedTrigger": {
         "runFunction": "onDriveItemsSelected"
       }
-    },
-    "calendar": {
-      "eventOpenTrigger": {
-        "runFunction": "onCalendarEventOpen"
-      }
     }
   }
 }
