@@ -23,13 +23,15 @@ clasp clone 1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1
 
 ### Deploy the add-on
 
-While the add-on is in development, each developer must make their own test deployment from the Google App Scripts editor. See [Test and debug Apps Script Google Workspace add-ons](https://developers.google.com/workspace/add-ons/how-tos/testing-workspace-addons) for instructions 
+While the add-on is in development, it can't be installed from the public Google Add-ons website. 
 
-If you want to make sure that you've deployed what you meant to deploy, you can edit the `.addons.common.name` property in `appsscript.json`. Then when you reload a GMail or other page where the add-on is relevant, you should see the name change. 
-
-We're still working out how test deployments work among collaborators! It seems that you can use `clasp` to create versioned, named deployments and choose those from the Apps Script web page, but we don't have a practice around that yet.
+Instead,each developer must make their own test deployment from the [Google App Scripts editor for this project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit). See [Test and debug Apps Script Google Workspace add-ons](https://developers.google.com/workspace/add-ons/how-tos/testing-workspace-addons) for instructions. 
 
 While the app is in testing mode, in order to grant the add-on permission to access your GMail, etc, your address must be added to the Google Cloud test users list by Joe Germuska. You can still deploy the add-on but you'll get an error when you try to use it.
+
+If you want to make sure that you've deployed what you meant to deploy, you can edit the `.addons.common.name` property in `appsscript.json`. After this (or any change you want to try on the website), run `clasp push` Then when you reload a GMail or other page where the add-on is relevant, you should see the name change, or other changes you've made.
+
+We're still working out how test deployments work among collaborators! It seems that you can use `clasp` to create versioned, named deployments and choose those from the Apps Script web page, but we don't have a practice around that yet.
 
 ### Code organization
 
@@ -40,7 +42,6 @@ Try to keep Google app-specific functions in the appropriate files (eg `Gmail.js
 ### Tips for collaboration
 
 * If you edit files using the web-based Apps Script editor, you must still pull them to your local machine (using `clasp pull`) so that they can be pushed to the GitHub repository.
-
 
 
 ## Longer-term to-dos

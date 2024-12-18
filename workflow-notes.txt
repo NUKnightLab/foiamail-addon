@@ -1,0 +1,9 @@
+Workflow
+- draft a template
+- create a mailing list
+- compose emails by mail merging the mailing list with the template 
+    - pick a different list? 
+    - validate tokens
+- send prepared emails
+    - label them
+- track replies to labeled emails

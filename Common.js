@@ -15,26 +15,137 @@
  */
 var MAX_MESSAGE_LENGTH = 40;
 
+const MAGIC_FOLDER_NAME = 'FOIAMail'
+
 const ICON_URL = 'https://uploads.knightlab.com/paper_airplane.png'
+
 /**
  * Callback for rendering the homepage card.
  * @return {CardService.Card} The card to show to the user.
  */
 function onHomepage(e) {
+  console.log('onHomepage');
   console.log(e);
-  var hour = Number(Utilities.formatDate(new Date(), e.userTimezone.id, 'H'));
-  var message;
-  if (hour >= 6 && hour < 12) {
-    message = 'Good morning';
-  } else if (hour >= 12 && hour < 18) {
-    message = 'Good afternoon';
-  } else {
-    message = 'Good night';
-  }
-  message += ' ' + e.hostApp;
-  return createCatCard(message, true);
+  return createHomepageCard();
 }
 
+/**
+ * Search Google Drive for this user's templates folder. 
+ * @return {Folder} The user's folder as an object, or null if they don't have one.
+ */
+function findFOIAMailFolder() {
+  // maybe later we add a property or tag so that if the name is changed, it's ok?
+  // For now just return the first one. That might not scale either.
+  const folders = DriveApp.searchFolders(`title = "${MAGIC_FOLDER_NAME}"`);
+  while (folders.hasNext()) {
+    const folder = folders.next();
+    return folder
+  }
+  return null
+}
+
+function createFOIAMailFolder() {
+  const folder = DriveApp.createFolder(MAGIC_FOLDER_NAME);
+  return folder;
+}
+
+/**
+ * Creates a fixed footer with a primary button
+ * @param {string} buttonText The text for the primary button
+ * @param {string} url The URL to open when clicked
+ * @return {CardService.FixedFooter} The assembled footer
+ */
+function createFixedFooter() {
+  return CardService.newFixedFooter()
+    .setPrimaryButton(CardService.newTextButton()
+      .setText('Visit Knight Lab Website')
+      .setOpenLink(CardService.newOpenLink()
+        .setUrl('https://knightlab.northwestern.edu')));
+}
+
+function composeMailMergeDrafts() {
+  // TODO: get a template doc ID that isn't hard-coded
+  // maybe do it from the Docs UI, and ask for the subject
+  // instead of encoding it somehow?
+  let doc_id = '1GIohdUNMmRgtfwMkISnhws6sSSam7MzzTeuuhsNA-QQ'
+  const parsed = parseDocToTemplate(doc_id)
+  let sheets_id = '1OIPq4yqGESxSsjyy4po00Qc8sAQDdntCfUb9gswWqS8'
+  let rows = getSpreadsheetAsObjects(sheets_id)
+  let label = GmailApp.getUserLabelByName('FOIAMail')
+  if (!label) {
+    label = GmailApp.createLabel('FOIAMail')
+  }
+
+  rows.forEach(row => {
+    let body = evalTemplate(parsed.body, row)
+    let subject = evalTemplate(parsed.subject, row)
+    let draft = GmailApp.createDraft(
+      row.email, // this doesn't seem robust
+      subject,
+      body)
+
+    // TODO: per "campaign" labels?
+    draft.getMessage().getThread().addLabel(label)
+
+    });
+    return CardService.newActionResponseBuilder()
+    .setNotification(
+      CardService.newNotification()
+      .setText(`Created ${rows.length} drafts for you`),
+    )
+    .build();
+
+}
+
+function evalTemplate(tmpl, ctx) {
+  Object.keys(ctx).forEach(k => {
+    tmpl = tmpl.replaceAll(`{{${k}}}`, ctx[k])
+  })
+  return tmpl
+}
+
+/**
+ * Creates the card for the home page
+ * @return {CardService.Card} The assembled card.
+ */
+function createHomepageCard() {
+  let folder = findFOIAMailFolder()
+  let card_text
+  if (folder) {
+    card_text = "Seems like you've been here before"
+  } else {
+    card_text = "Welcome to FOIAMail"
+    folder = createFOIAMailFolder()
+  }
+
+  let folder_opener_button = CardService.newTextButton()
+    .setText('Open FOIAMail Folder')
+    .setOpenLink(CardService.newOpenLink()
+      .setUrl(folder.getUrl()))
+
+  let paragraph = CardService.newTextParagraph()
+    .setText(card_text)
+      
+
+  const mailmerge_button = CardService.newTextButton()
+    .setText('Mail Merge')
+    .setOnClickAction(
+      CardService.newAction()
+                 .setFunctionName('composeMailMergeDrafts'));
+
+
+
+  // Assemble the widgets and return the card.
+  var section = CardService.newCardSection()
+    .addWidget(paragraph)
+    .addWidget(folder_opener_button)
+  var card = CardService.newCardBuilder()
+    .addSection(section)
+    .addSection(CardService.newCardSection()
+      .addWidget(mailmerge_button))
+    .setFixedFooter(createFixedFooter());
+    return card.build()
+}
 /**
  * Creates a card with an image of a cat, overlayed with the text.
  * @param {String} text The text to overlay on the image.
@@ -73,11 +184,7 @@ function createCatCard(text, isHomepage) {
     .addButton(button);
 
   // Create a footer to be shown at the bottom.
-  var footer = CardService.newFixedFooter()
-    .setPrimaryButton(CardService.newTextButton()
-      .setText('Powered by cataas.com')
-      .setOpenLink(CardService.newOpenLink()
-        .setUrl('https://cataas.com')));
+  var footer = createFixedFooter('Powered by cataas.com', 'https://cataas.com');
 
   var paragraph = CardService.newTextParagraph().setText(`${caption} in Common.js`)
 
