@@ -4,6 +4,7 @@ Workflow
 - compose emails by mail merging the mailing list with the template 
     - pick a different list? 
     - validate tokens
+    - using Google Picker in Apps Script https://www.labnol.org/code/20039-google-picker-with-apps-script
 - send prepared emails
     - label them
 - track replies to labeled emails

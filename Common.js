@@ -1,19 +1,9 @@
 /**
-* This simple Google Workspace Add-on shows a random image of a cat in the
-* sidebar. When opened manually (the homepage card), some static text is
-* overlayed on the image, but when contextual cards are opened a new cat image
-* is shown with the text taken from that context (such as a message's subject
-* line) overlaying the image. There is also a button that updates the card with
-* a new random cat image.
-*
-* Click "File > Make a copy..." to copy the script, and "Publish > Deploy from
-* manifest > Install add-on" to install it.
-*/
-
-/**
- * The maximum number of characters that can fit in the cat image.
+ * FOIAMail: a Google Workspace add-on to support journalists making 
+ * Freedom of Information Act requests.
  */
-var MAX_MESSAGE_LENGTH = 40;
+
+const STANDARD_SIDEBAR_TITLE = 'FOIAMail'
 
 const MAGIC_FOLDER_NAME = 'FOIAMail'
 
@@ -236,17 +226,4 @@ function onChangeCat(e) {
   var actionResponse = CardService.newActionResponseBuilder()
     .setNavigation(navigation);
   return actionResponse.build();
-}
-
-/**
- * Truncate a message to fit in the cat image.
- * @param {string} message The message to truncate.
- * @return {string} The truncated message.
- */
-function truncate(message) {
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    message = message.slice(0, MAX_MESSAGE_LENGTH);
-    message = message.slice(0, message.lastIndexOf(' ')) + '...';
-  }
-  return message;
 }
