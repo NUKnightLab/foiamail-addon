@@ -23,15 +23,32 @@ clasp clone 1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1
 
 ### Deploy the add-on
 
-While the add-on is in development, it can't be installed from the public Google Add-ons website. 
+While the add-on is in development, it can't be installed from the public Google Add-ons website. Instead, you must install a test deployment from the [Google App Scripts editor for this project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit). This is a bit complicated, so read on before you go to do it.
 
-Instead,each developer must make their own test deployment from the [Google App Scripts editor for this project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit). See [Test and debug Apps Script Google Workspace add-ons](https://developers.google.com/workspace/add-ons/how-tos/testing-workspace-addons) for instructions. 
+It is possible to install any number of deployed versions of the project into the same account, but for now, best practice would be for each active developer to have their own "deployment". 
 
-While the app is in testing mode, in order to grant the add-on permission to access your GMail, etc, your address must be added to the Google Cloud test users list by Joe Germuska. You can still deploy the add-on but you'll get an error when you try to use it.
+The very first time, before you even install the add-on in your Google account, issue this command:
 
-If you want to make sure that you've deployed what you meant to deploy, you can edit the `.addons.common.name` property in `appsscript.json`. After this (or any change you want to try on the website), run `clasp push` Then when you reload a GMail or other page where the add-on is relevant, you should see the name change, or other changes you've made.
+```clasp deploy -d <FRIENDLY_DEPLOYMENT_NAME>```
 
-We're still working out how test deployments work among collaborators! It seems that you can use `clasp` to create versioned, named deployments and choose those from the Apps Script web page, but we don't have a practice around that yet.
+FRIENDLY_DEPLOYMENT_NAME should include your name, initials, or some other identifier distinct to you. Besides the name, your deployment will get a 72-character ID string which you'll need to use repeatedly during development. You may want to set it in an environment variable, or remember how to use your command history. If you forget it, you can run
+
+```clasp deployments```
+
+to remind yourself.
+
+Now go to the [Google Scripts editor for this project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit)
+click the `deploy` button and choose `Test deployments`  Under the "deployments" menu, select the new deployment you've made, then click the "install" button.  You should now see the add-on in the Gmail and Docs sidebars. 
+
+Then, as you make changes:
+
+```clasp push && clasp deploy -i <YOUR_DEPLOYMENT_ID```  
+
+This will update the code associated with your installed test deployment. *If you forget the `clasp deploy`, or if you forget to specify the deployment identifier with `-i`, you won't see the changes you pushed.*    
+
+While the app is in testing mode, in order to grant the add-on permission to access your GMail, etc, your Google Account must be added to the Google Cloud test users list by Joe Germuska ([APIS & Services > OAuth Consent Screen](https://console.cloud.google.com/auth/audience?project=foiamail-addon)). You can still deploy the add-on but you'll get an error when you try go through the "Authorize Access" step.
+
+If you want to make sure that you've deployed what you meant to deploy, you can edit the `.addons.common.name` property in `appsscript.json`. After this (or any change you want to try on the website), run `clasp push && clasp deploy -i ...` Then when you reload a GMail or other page where the add-on is relevant, you should see the name change, or other changes you've made.
 
 ### Code organization
 
