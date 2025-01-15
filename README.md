@@ -1,12 +1,20 @@
 # foiamail-addon
 A Google Workspace add-on to support journalists making FOIA requests
 
-## Developing
+
+## Onboarding, permissions, access
+
+To work on the project, you will need to have [the Google Scripts project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit) shared with you, with Editor privileges. Provide your primary Google account to Joe Germuska or another leader on the project, and they will share it with you.
+
+**You may want to create a separate Google account for testing**, to make sure that nothing that the app does inadvertently affects your primary account. This account will also need to have the project shared with it, so that it can install test deployments of the project.
+
+While the app is in testing mode, any account that installs a test deployment also needs to be added to the Google Cloud test users list by Joe Germuska ([APIS & Services > OAuth Consent Screen](https://console.cloud.google.com/auth/audience?project=foiamail-addon)). If this is skipped, you can still deploy the add-on but you'll get an error when you try go through the "Authorize Access" step.
+
+Instructions below also assume that you have `npm` (Node Package Manager) installed, as well as some `git` client. Git examples in the docs will be based on the git command-line tool; if you prefer to use another Git client, you may need to translate.
+
 We use the [`clasp` command line tool](https://developers.google.com/apps-script/guides/clasp) to push code changes to Google App Scripts.
 
 Start by cloning this repository, if you haven't.
-
-**You may want to create a separate Google account for testing**, to make sure that nothing that the app does inadvertently affects your primary account.
 
 ### Install clasp
 `clasp` is a command line tool that helps us ensure consistency when making changes to the Apps Script project. 
@@ -21,9 +29,32 @@ Then, in the git repo directory, `clasp clone` the project using the correct scr
 clasp clone 1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1
 ```
 
-### Deploy the add-on
+`clasp clone` pulls the current code from the project, but also sets up a `.clasp.json` file which has some information that is unique to your development filesystem. (For that reason, `.clasp.json` is *gitignored*. 
 
-While the add-on is in development, it can't be installed from the public Google Add-ons website. Instead, you must install a test deployment from the [Google App Scripts editor for this project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit). This is a bit complicated, so read on before you go to do it.
+Theoretically the `clasp clone` into an already `git clone`'d repository doesn't create changes to any other files from the Git repository. If it does, you should probably use `git checkout .` to discard those changes. We may learn more about this as we move further into team development.
+
+
+## Developing
+
+This is our first time working as a team to develop a Google Workspace add-on. We are working out best practices for collaboration as we go, and we'll try to document all of that here.
+
+### General develoment pattern
+
+GitHub should be treated as the canonical version of project code. While `clasp` allows you to `clasp pull` the current code from `script.google.com`, this should not be used. Use normal git/GitHub features to update your code, merge changes, make branches for your development work and submit pull requests when you have code that is ready to be merged into the `main` branch.
+
+Pushing code to any GitHub branch is independent of pushing it to `script.google.com` for testing. (Maybe there's a way to use Git commit hooks to make it smoother?)
+
+## Testing
+
+Most testing necessarily has to happen in a web browser, using Google Workspace tools (Gmail, Drive, Sheets, Docs). Google's add-on model makes this slightly complicated for team development, but we have a prospective process documented below.
+
+(We should find any available opportunities for locally-executable testing such as unit tests, but that won't cover many cases.) 
+
+### Deploy the add-on for testing
+
+While the add-on is in development, it can't be installed from the public Google Add-ons website. That is, you can't just search for it to install.
+
+Instead, you must install a test deployment from the [Google App Scripts editor for this project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit). This is a bit complicated, so read on before you go to do it.
 
 It is possible to install any number of deployed versions of the project into the same account, but for now, best practice would be for each active developer to have their own "deployment". 
 
@@ -58,8 +89,7 @@ Try to keep Google app-specific functions in the appropriate files (eg `Gmail.js
 
 ### Tips for collaboration
 
-* If you edit files using the web-based Apps Script editor, you must still pull them to your local machine (using `clasp pull`) so that they can be pushed to the GitHub repository.
-
+* Don't edit files using the web-based Apps Script editor. It is likely to lead to confusion.
 
 ## Longer-term to-dos
 * create a foiamail.knightlab.com website
