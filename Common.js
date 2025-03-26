@@ -95,6 +95,158 @@ function evalTemplate(tmpl, ctx) {
 }
 
 /**
+ * @return {CardService.Card} Assembled card
+ * 
+ */
+
+
+
+/**
+ * @return {[string]} List of strings associated with the campaign
+ */
+function saveCreateCampaign(e) {
+  var list = []
+  let input = e.formInput
+  list.push(input.campaign_name, input.campaign_desc, input.campaign_temp)
+
+  
+
+  //making sure inputs were collected properly
+
+  let info_section = CardService.newCardSection()
+  
+  let t_name = 'Campaign Name:' + list[0]
+  let t_desc = 'Campaign Description' + list[1]
+  let t_url =  'Campaign Template' + list[2]
+
+  let graf_1 = CardService.newTextParagraph()
+    .setText(t_name)
+
+  let graf_2 = CardService.newTextParagraph()
+    .setText(t_desc)
+
+  let graf_3 = CardService.newTextParagraph()
+    .setText(t_url)
+
+  info_section.addWidget(graf_1, graf_2, graf_3)
+
+
+  var card = CardService.newCardBuilder()
+    .addSection(info_section)
+    .setFixedFooter(createFixedFooter());
+
+
+  
+
+
+  return CardService.newActionResponseBuilder()
+  .setNavigation(CardService.newNavigation().pushCard(card.build()))
+  .build();;
+}
+
+/**
+ * Allows user to pick a file from the drive
+ * @return {html} Google Drive Picker Interface
+ */
+
+function showFilePicker() {
+  var picker_html = HtmlService.createHtmlOutputFromFile('Picker.html')
+    .setWidth(600)
+    .setHeight(425)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  return picker_html
+}
+
+/** 
+ * Creates card for new campaign
+ * @return {CardService.Card} The assembled card.
+ */
+function createNewCampaignCard() {
+  
+  // Top section
+  let top_text = "Get started on your new FOIAMail campaign"
+  let top_paragraph = CardService.newTextParagraph()
+    .setText(top_text)
+  var top_section = CardService.newCardSection()
+    .addWidget(top_paragraph)
+
+  // Naming section
+  const name_input = CardService.newTextInput()
+                             .setFieldName('campaign_name')
+                             .setTitle('Pick a name for your campaign')
+                             .setValue('My Campaign')
+  var name_section = CardService.newCardSection()
+    .addWidget(name_input)
+
+  // Description section
+  const description_input = CardService.newTextInput()
+                             .setFieldName('campaign_desc')
+                             .setTitle('Describe your campaign')
+                             .setHint('My campaign is for tktk')
+  var description_section = CardService.newCardSection()
+    .addWidget(description_input)
+  
+  // Template picker section
+  
+  let template_text = 'Pick a template (for now, input URL)'
+  
+  let template_paragraph = CardService.newTextParagraph()
+    .setText(template_text)
+
+  
+  const template_input = CardService.newTextInput()
+    .setFieldName('campaign_temp')
+    .setTitle('Link the url to the google doc for your campaign')
+    .setHint('https://...')
+  
+
+  let picker_button = CardService.newTextButton()
+    .setText("Pick template")
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('showFilePicker'))
+  
+
+  var template_section = CardService.newCardSection()
+    .addWidget(template_paragraph)
+    .addWidget(template_input)
+    //.addWidget(picker_button)
+
+  // Submit section
+  
+  let submit_button = CardService.newTextButton()
+    .setText('Submit')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('saveCreateCampaign'))
+  
+  let submit_section = CardService.newCardSection()
+    .addWidget(submit_button)
+
+                        
+  
+  var card = CardService.newCardBuilder()
+    .addSection(top_section)
+    .addSection(name_section)
+    .addSection(description_section)
+    .addSection(template_section)
+    .addSection(submit_section)
+
+    .setFixedFooter(createFixedFooter());
+  return card.build()
+}
+
+/**
+ * 
+ * @param {*} e event with potential parameters
+ * @returns a navigation to the New Campaign card
+ */
+function showNewCampaignCard(e) {
+  return CardService.newActionResponseBuilder()
+      .setNavigation(CardService.newNavigation().pushCard(createNewCampaignCard()))
+      .build();
+}
+
+
+/**
  * Creates the card for the home page
  * @return {CardService.Card} The assembled card.
  */
@@ -115,14 +267,23 @@ function createHomepageCard() {
 
   let paragraph = CardService.newTextParagraph()
     .setText(card_text)
-      
+
+
+  let new_campaign_button = CardService.newTextButton()
+    .setText('New Campaign')
+    .setOnClickAction(
+      CardService.newAction()
+                 .setFunctionName('showNewCampaignCard')
+    )
+  
+
+  
 
   const mailmerge_button = CardService.newTextButton()
     .setText('Mail Merge')
     .setOnClickAction(
       CardService.newAction()
                  .setFunctionName('composeMailMergeDrafts'));
-
 
 
   // Assemble the widgets and return the card.
@@ -133,8 +294,11 @@ function createHomepageCard() {
     .addSection(section)
     .addSection(CardService.newCardSection()
       .addWidget(mailmerge_button))
+    .addSection(CardService.newCardSection()
+      .addWidget(new_campaign_button))
     .setFixedFooter(createFixedFooter());
-    return card.build()
+  return card.build()
+  
 }
 /**
  * Creates a card with an image of a cat, overlayed with the text.
