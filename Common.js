@@ -14,6 +14,7 @@ const ICON_URL = 'https://uploads.knightlab.com/paper_airplane.png'
  * @return {CardService.Card} The card to show to the user.
  */
 function onHomepage(e) {
+  initCheck();
   console.log('onHomepage');
   console.log(e);
   return createHomepageCard();
@@ -46,11 +47,16 @@ function createFOIAMailFolder() {
  * @return {CardService.FixedFooter} The assembled footer
  */
 function createFixedFooter() {
-  return CardService.newFixedFooter()
-    .setPrimaryButton(CardService.newTextButton()
-      .setText('Visit Knight Lab Website')
-      .setOpenLink(CardService.newOpenLink()
-        .setUrl('https://knightlab.northwestern.edu')));
+  let footer = CardService.newFixedFooter()
+                .setPrimaryButton(CardService.newTextButton()
+                  .setText('Visit Knight Lab Website')
+                  .setOpenLink(CardService.newOpenLink()
+                    .setUrl('https://knightlab.northwestern.edu')))
+  footer.setSecondaryButton(CardService.newTextButton()
+    .setText('View properties')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('showPropertiesCard')));
+  return footer
 }
 
 function composeMailMergeDrafts() {
@@ -94,30 +100,259 @@ function evalTemplate(tmpl, ctx) {
   return tmpl
 }
 
+
+
 /**
- * @return {CardService.Card} Assembled card
+ * Initialize FOIAMail properties if needed
+ * @return {null} 
  * 
  */
 
+function initCheck() {
+  let props = PropertiesService.getScriptProperties();
+  console.log(props);
+  if (!props.getProperty('initialized')) {
+    // Very very first time using FOIAMail
+    // We need to create a property for an object of campaign classes
+    // Then, mark this as initialized (set to true)
+
+    props.setProperty('openCampaigns', JSON.stringify([]))
+    props.setProperty('archivedCampaigns', JSON.stringify([]))
+    props.setProperty('rootId', '1OxoVVN5t7gZ_koZqxmnTUinC1PmI4hmL') //unhardcode later (do we need this... lowk no)
+    props.setProperty('initialized', true)
+    
+    // What other data do we need? 
+  }
+  return
+}
+
+/**
+ * Reset data associated with the user's FOIAMail (mainly for testing right now)
+ * @return {null}
+ */
+function reset() {
+
+  //for now, just delete all properties (does this delete the campaign metadata stored inside?)
+
+  props = PropertiesService.getScriptProperties();
+  props.deleteAllProperties();
+
+  return;
+
+}
+
+/**
+ * Delete a Campaign
+ * @return {null}
+ */
+function deleteCampaign() {
+  return
+}
+
 
 
 /**
- * @return {[string]} List of strings associated with the campaign
+ * Create a card that shows global FOIAMail properties
+ * @return {navigation} navigation to the properties card
+ */
+
+function createPropertiesCard() {
+
+  let props = PropertiesService.getScriptProperties();
+  let info_section = CardService.newCardSection();
+
+  if (props.getKeys().length > 0) {
+  
+    for (var i = 0; i < props.getKeys().length; i++) {
+      let key = props.getKeys()[i]
+
+      let val = JSON.parse(props.getProperty(key));
+      let text;
+      if (typeof(val) == 'object' && typeof(val[0]) == 'object') {
+        text = `${key} : `
+        for (var i = 0; i < val.length; i++)
+          text += `${val[i]['name']} | `
+      }
+      else {
+        text = `${key} : ${val}`
+      }
+      
+      let graf = CardService.newTextParagraph()
+                            .setText(text)
+      info_section.addWidget(graf)
+    }
+  }
+  else {
+    info_section.addWidget(CardService.newTextParagraph().setText('no properties'))
+  }
+
+  let delete_button = CardService.newTextButton()
+                                 .setText('Delete all properties')
+                                 .setOnClickAction(CardService.newAction()
+                                                              .setFunctionName('reset'))
+  
+  let delete_section = CardService.newCardSection()
+                                  .addWidget(delete_button)
+
+  let card = CardService.newCardBuilder()
+    .addSection(info_section)
+    .addSection(delete_section)
+
+  return card.build()
+}
+
+/**
+ * Create a card that shows global FOIAMail properties
+ * @return {CardService.Card} Assembled card to build
+ */
+
+function showPropertiesCard() {
+  return CardService.newActionResponseBuilder()
+      .setNavigation(CardService.newNavigation().pushCard(createPropertiesCard()))
+      .build();
+}
+
+
+
+/**
+ * Create a campaign card for the active campaign
+ * @return {CardService.Card} Assembled card to build
+ */
+function createActiveCampaignCard(campaign) {
+  //Top section
+
+  let top_text = campaign['name']
+  let top_paragraph = CardService.newTextParagraph()
+    .setText(top_text)
+  var top_section = CardService.newCardSection()
+    .addWidget(top_paragraph)
+
+  //Open Tracker
+  let tracker_button = CardService.newTextButton()
+    .setText('Open Status Sheet')
+    .setOpenLink(CardService.newOpenLink()
+      .setUrl(campaign['tracker']))
+
+  //Open Folder 
+  let folder_button = CardService.newTextButton()
+    .setText('Open Campaign Folder')
+    .setOpenLink(CardService.newOpenLink()
+      .setUrl(campaign['folder']))
+
+  //Change Template
+
+  //Generate Request Drafts
+  let generate_button = CardService.newTextButton()
+    .setText('Generate Request Drafts')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('showGeneratorCard'))
+
+  let actions_section = CardService.newCardSection()
+    .addWidget(tracker_button)
+    .addWidget(folder_button)
+    .addWidget(generate_button)
+
+  //Delete Campaign
+  let delete_button = CardService.newTextButton()
+    .setText('Delete Campaign')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('deleteCampaign'))
+  let delete_section = CardService.newCardSection()
+    .addWidget(delete_button)
+
+  //Compile the card
+  var card = CardService.newCardBuilder()
+    .addSection(top_section)
+    .addSection(actions_section)
+    .addSection(delete_section)
+    .setFixedFooter(createFixedFooter())
+
+  return card.build()
+
+}
+
+/**
+ * 
+ * @param {*} e event with potential parameters
+ * @returns {navigation} a navigation to the New Campaign card
+ */
+function showActiveCampaignCard(e) {
+  return CardService.newActionResponseBuilder()
+      .setNavigation(CardService.newNavigation().pushCard(createActiveCampaignCard(JSON.parse(e.formInput.selection))))
+      .build();
+}
+
+/**
+ * This seems so wrong but just a workaround for right now
+ * @param {*} e event with potential parameters
+ * @returns {navigation} a navigation to the New Campaign card
+ */
+function showActiveCampaignCard1(campaign) {
+  return CardService.newActionResponseBuilder()
+      .setNavigation(CardService.newNavigation().pushCard(createActiveCampaignCard(campaign)))
+      .build();
+}
+
+/**
+ * Create the campaign and a card to show next steps
+ * @return {null}
  */
 function saveCreateCampaign(e) {
-  var list = []
+  
   let input = e.formInput
-  list.push(input.campaign_name, input.campaign_desc, input.campaign_temp)
+  
+  //Create new campaign 
+  //Need to add error handling for same name campaigns
+  //OR no same name campaigns
+  //Running into some issues clasp pushing .ts files so changing campaign to just an object
+  
+  let camp = {};
+  camp['name'] = input.campaign_name;
+  camp['description'] = input.campaign_desc;
+  camp['template'] = input.campaign_temp;
 
+  //Create new gmail label, tracker and folder for this campaign
+  //Set the campaign class with this info (urls for now)
+  GmailApp.createLabel(camp['name']);
+  let folder = DriveApp.createFolder(camp['name']);
+  folder.moveTo(findFOIAMailFolder());
+  camp['folder'] = folder.getUrl();
+
+  let tracker_sheet = SpreadsheetApp.create('Status Tracker');
+  DriveApp.getFileById(tracker_sheet.getId()).moveTo(folder);
+  camp['tracker'] = tracker_sheet.getUrl();
+  let track_sheet = tracker_sheet.getSheets()[0];
+  track_sheet.appendRow(['request_id', 'agency_name','agency_email','status']);
   
 
-  //making sure inputs were collected properly
+  let generator_sheet = SpreadsheetApp.create('Request Generator');
+  DriveApp.getFileById(generator_sheet.getId()).moveTo(folder);
+  camp['generator'] = generator_sheet.getUrl();
+  let gen_sheet = generator_sheet.getSheets()[0];
+  gen_sheet.appendRow(['agency_name', 'agency_email']);
 
+
+  //Add this campaign to the script properties
+
+  let props = PropertiesService.getScriptProperties();
+  let open_campaigns_str = props.getProperty('openCampaigns');
+  let open_campaigns = JSON.parse(open_campaigns_str);
+  open_campaigns.push(camp);
+  props.setProperty('openCampaigns', JSON.stringify(open_campaigns));
+  //props.setProperty('activeCampaign', camp);
+
+  //Make the campaign home page card
+  //let's make this a separate function? 
+  
+  return showActiveCampaignCard1(camp);
+
+  //logging to make sure inputs were collected properly
+  /*
   let info_section = CardService.newCardSection()
   
-  let t_name = 'Campaign Name:' + list[0]
-  let t_desc = 'Campaign Description' + list[1]
-  let t_url =  'Campaign Template' + list[2]
+  let t_name = 'Campaign Name:' + input.campaign_name
+  let t_desc = 'Campaign Description' + input.campaign_desc
+  let t_url =  'Campaign Template' + input.campaign_temp
 
   let graf_1 = CardService.newTextParagraph()
     .setText(t_name)
@@ -130,31 +365,9 @@ function saveCreateCampaign(e) {
 
   info_section.addWidget(graf_1, graf_2, graf_3)
 
-
-  var card = CardService.newCardBuilder()
-    .addSection(info_section)
-    .setFixedFooter(createFixedFooter());
-
+  */
 
   
-
-
-  return CardService.newActionResponseBuilder()
-  .setNavigation(CardService.newNavigation().pushCard(card.build()))
-  .build();;
-}
-
-/**
- * Allows user to pick a file from the drive
- * @return {html} Google Drive Picker Interface
- */
-
-function showFilePicker() {
-  var picker_html = HtmlService.createHtmlOutputFromFile('Picker.html')
-    .setWidth(600)
-    .setHeight(425)
-    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-  return picker_html
 }
 
 /** 
@@ -183,6 +396,7 @@ function createNewCampaignCard() {
                              .setFieldName('campaign_desc')
                              .setTitle('Describe your campaign')
                              .setHint('My campaign is for tktk')
+                             .setMultiline(true)
   var description_section = CardService.newCardSection()
     .addWidget(description_input)
   
@@ -217,6 +431,7 @@ function createNewCampaignCard() {
     .setText('Submit')
     .setOnClickAction(CardService.newAction()
                                  .setFunctionName('saveCreateCampaign'))
+                                 
   
   let submit_section = CardService.newCardSection()
     .addWidget(submit_button)
@@ -246,11 +461,13 @@ function showNewCampaignCard(e) {
 }
 
 
+
 /**
  * Creates the card for the home page
  * @return {CardService.Card} The assembled card.
  */
 function createHomepageCard() {
+  
   let folder = findFOIAMailFolder()
   let card_text
   if (folder) {
@@ -277,9 +494,34 @@ function createHomepageCard() {
     )
   
 
+  // Resume Campaign Selection Section
+  const selection_input = CardService.newSelectionInput()
+                                     .setType(CardService.SelectionInputType.DROPDOWN)
+                                     .setTitle('Pick your campaign')
+                                     .setFieldName('selection')
+
+  let open_campaigns = JSON.parse(PropertiesService.getScriptProperties()
+                                                     .getProperty('openCampaigns'))
+  if (open_campaigns != []) {
+    for (var i = 0; i < open_campaigns.length; i++) {
+      selection_input.addItem(open_campaigns[i]['name'], JSON.stringify(open_campaigns[i]), false)
+    }
+  }
+  
+  let resume_campaign_button = CardService.newTextButton()
+    .setText('Resume Campaign')
+    .setOnClickAction(
+      CardService.newAction()
+                 .setFunctionName('showActiveCampaignCard')
+    )
+  
+  let selection_section = CardService.newCardSection()
+                                     .addWidget(selection_input)
+                                     .addWidget(resume_campaign_button)
+
   
 
-  const mailmerge_button = CardService.newTextButton()
+  let mailmerge_button = CardService.newTextButton()
     .setText('Mail Merge')
     .setOnClickAction(
       CardService.newAction()
@@ -296,10 +538,15 @@ function createHomepageCard() {
       .addWidget(mailmerge_button))
     .addSection(CardService.newCardSection()
       .addWidget(new_campaign_button))
+    .addSection(selection_section)
     .setFixedFooter(createFixedFooter());
   return card.build()
   
 }
+
+
+
+
 /**
  * Creates a card with an image of a cat, overlayed with the text.
  * @param {String} text The text to overlay on the image.
