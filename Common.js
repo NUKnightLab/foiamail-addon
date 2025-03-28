@@ -34,7 +34,6 @@ function findFOIAMailFolder() {
   }
   return null
 }
-
 function createFOIAMailFolder() {
   const folder = DriveApp.createFolder(MAGIC_FOLDER_NAME);
   return folder;
@@ -105,9 +104,7 @@ function evalTemplate(tmpl, ctx) {
 /**
  * Initialize FOIAMail properties if needed
  * @return {null} 
- * 
  */
-
 function initCheck() {
   let props = PropertiesService.getScriptProperties();
   console.log(props);
@@ -118,10 +115,14 @@ function initCheck() {
 
     props.setProperty('openCampaigns', JSON.stringify([]))
     props.setProperty('archivedCampaigns', JSON.stringify([]))
-    props.setProperty('rootId', '1OxoVVN5t7gZ_koZqxmnTUinC1PmI4hmL') //unhardcode later (do we need this... lowk no)
-    props.setProperty('initialized', true)
+    //props.setProperty('rootId', '1OxoVVN5t7gZ_koZqxmnTUinC1PmI4hmL') //unhardcode later (do we need this... lowk no)
+    props.setProperty('initialized', JSON.stringify({name: true}))
+    props.setProperty('readyDraftIds', JSON.stringify([]))
     
     // What other data do we need? 
+
+    //Random thing I guess we should initialize when they start using the service
+    GmailApp.createLabel('Unsent Request')
   }
   return
 }
@@ -155,7 +156,6 @@ function deleteCampaign() {
  * Create a card that shows global FOIAMail properties
  * @return {navigation} navigation to the properties card
  */
-
 function createPropertiesCard() {
 
   let props = PropertiesService.getScriptProperties();
@@ -166,9 +166,12 @@ function createPropertiesCard() {
     for (var i = 0; i < props.getKeys().length; i++) {
       let key = props.getKeys()[i]
 
+      let text = `${key}: ${props.getProperty(key)}`
+
+      /*
       let val = JSON.parse(props.getProperty(key));
       let text;
-      if (typeof(val) == 'object' && typeof(val[0]) == 'object') {
+      if (typeof(val) == 'object') { //fix for 'initialized' property
         text = `${key} : `
         for (var i = 0; i < val.length; i++)
           text += `${val[i]['name']} | `
@@ -176,6 +179,7 @@ function createPropertiesCard() {
       else {
         text = `${key} : ${val}`
       }
+      */
       
       let graf = CardService.newTextParagraph()
                             .setText(text)
@@ -205,91 +209,9 @@ function createPropertiesCard() {
  * Create a card that shows global FOIAMail properties
  * @return {CardService.Card} Assembled card to build
  */
-
 function showPropertiesCard() {
   return CardService.newActionResponseBuilder()
       .setNavigation(CardService.newNavigation().pushCard(createPropertiesCard()))
-      .build();
-}
-
-
-
-/**
- * Create a campaign card for the active campaign
- * @return {CardService.Card} Assembled card to build
- */
-function createActiveCampaignCard(campaign) {
-  //Top section
-
-  let top_text = campaign['name']
-  let top_paragraph = CardService.newTextParagraph()
-    .setText(top_text)
-  var top_section = CardService.newCardSection()
-    .addWidget(top_paragraph)
-
-  //Open Tracker
-  let tracker_button = CardService.newTextButton()
-    .setText('Open Status Sheet')
-    .setOpenLink(CardService.newOpenLink()
-      .setUrl(campaign['tracker']))
-
-  //Open Folder 
-  let folder_button = CardService.newTextButton()
-    .setText('Open Campaign Folder')
-    .setOpenLink(CardService.newOpenLink()
-      .setUrl(campaign['folder']))
-
-  //Change Template
-
-  //Generate Request Drafts
-  let generate_button = CardService.newTextButton()
-    .setText('Generate Request Drafts')
-    .setOnClickAction(CardService.newAction()
-                                 .setFunctionName('showGeneratorCard'))
-
-  let actions_section = CardService.newCardSection()
-    .addWidget(tracker_button)
-    .addWidget(folder_button)
-    .addWidget(generate_button)
-
-  //Delete Campaign
-  let delete_button = CardService.newTextButton()
-    .setText('Delete Campaign')
-    .setOnClickAction(CardService.newAction()
-                                 .setFunctionName('deleteCampaign'))
-  let delete_section = CardService.newCardSection()
-    .addWidget(delete_button)
-
-  //Compile the card
-  var card = CardService.newCardBuilder()
-    .addSection(top_section)
-    .addSection(actions_section)
-    .addSection(delete_section)
-    .setFixedFooter(createFixedFooter())
-
-  return card.build()
-
-}
-
-/**
- * 
- * @param {*} e event with potential parameters
- * @returns {navigation} a navigation to the New Campaign card
- */
-function showActiveCampaignCard(e) {
-  return CardService.newActionResponseBuilder()
-      .setNavigation(CardService.newNavigation().pushCard(createActiveCampaignCard(JSON.parse(e.formInput.selection))))
-      .build();
-}
-
-/**
- * This seems so wrong but just a workaround for right now
- * @param {*} e event with potential parameters
- * @returns {navigation} a navigation to the New Campaign card
- */
-function showActiveCampaignCard1(campaign) {
-  return CardService.newActionResponseBuilder()
-      .setNavigation(CardService.newNavigation().pushCard(createActiveCampaignCard(campaign)))
       .build();
 }
 
@@ -297,7 +219,7 @@ function showActiveCampaignCard1(campaign) {
  * Create the campaign and a card to show next steps
  * @return {null}
  */
-function saveCreateCampaign(e) {
+function createCampaign(e) {
   
   let input = e.formInput
   
@@ -316,13 +238,18 @@ function saveCreateCampaign(e) {
   GmailApp.createLabel(camp['name']);
   let folder = DriveApp.createFolder(camp['name']);
   folder.moveTo(findFOIAMailFolder());
-  camp['folder'] = folder.getUrl();
+  camp['folder'] = folder.getId();
 
   let tracker_sheet = SpreadsheetApp.create('Status Tracker');
   DriveApp.getFileById(tracker_sheet.getId()).moveTo(folder);
   camp['tracker'] = tracker_sheet.getUrl();
   let track_sheet = tracker_sheet.getSheets()[0];
-  track_sheet.appendRow(['request_id', 'agency_name','agency_email','status']);
+  track_sheet.appendRow(['request_id', 
+                         'agency_name',
+                         'agency_email',
+                         'status', 
+                         'thread_link', 
+                         'folder_link']);
   
 
   let generator_sheet = SpreadsheetApp.create('Request Generator');
@@ -344,32 +271,8 @@ function saveCreateCampaign(e) {
   //Make the campaign home page card
   //let's make this a separate function? 
   
-  return showActiveCampaignCard1(camp);
-
-  //logging to make sure inputs were collected properly
-  /*
-  let info_section = CardService.newCardSection()
-  
-  let t_name = 'Campaign Name:' + input.campaign_name
-  let t_desc = 'Campaign Description' + input.campaign_desc
-  let t_url =  'Campaign Template' + input.campaign_temp
-
-  let graf_1 = CardService.newTextParagraph()
-    .setText(t_name)
-
-  let graf_2 = CardService.newTextParagraph()
-    .setText(t_desc)
-
-  let graf_3 = CardService.newTextParagraph()
-    .setText(t_url)
-
-  info_section.addWidget(graf_1, graf_2, graf_3)
-
-  */
-
-  
+  return showActiveCampaignCard1(camp);  
 }
-
 /** 
  * Creates card for new campaign
  * @return {CardService.Card} The assembled card.
@@ -430,7 +333,7 @@ function createNewCampaignCard() {
   let submit_button = CardService.newTextButton()
     .setText('Submit')
     .setOnClickAction(CardService.newAction()
-                                 .setFunctionName('saveCreateCampaign'))
+                                 .setFunctionName('createCampaign'))
                                  
   
   let submit_section = CardService.newCardSection()
@@ -448,9 +351,7 @@ function createNewCampaignCard() {
     .setFixedFooter(createFixedFooter());
   return card.build()
 }
-
 /**
- * 
  * @param {*} e event with potential parameters
  * @returns a navigation to the New Campaign card
  */
@@ -459,6 +360,243 @@ function showNewCampaignCard(e) {
       .setNavigation(CardService.newNavigation().pushCard(createNewCampaignCard()))
       .build();
 }
+
+/**
+ * Create a campaign card for the active campaign
+ * @return {CardService.Card} Assembled card to build
+ */
+function createActiveCampaignCard(campaign) {
+  //Top section
+  let top_paragraph = CardService.newTextParagraph()
+    .setText(campaign['name'])
+  var top_section = CardService.newCardSection()
+    .addWidget(top_paragraph)
+
+  //Open Tracker
+  let tracker_button = CardService.newTextButton()
+    .setText('Open Status Sheet')
+    .setOpenLink(CardService.newOpenLink()
+      .setUrl(campaign['tracker']))
+
+  //Open Folder 
+  let folder_button = CardService.newTextButton()
+    .setText('Open Campaign Folder')
+    .setOpenLink(CardService.newOpenLink()
+      .setUrl(DriveApp.getFolderById(campaign['folder'])
+                      .getUrl()))
+
+  //Change Template
+
+  //Generate Request Drafts
+  let generate_button = CardService.newTextButton()
+    .setText('Generate Requests')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('showGeneratorCard')
+                                 .setParameters({camp: JSON.stringify(campaign)}))
+
+  let actions_section = CardService.newCardSection()
+    .addWidget(tracker_button)
+    .addWidget(folder_button)
+    .addWidget(generate_button)
+
+  //Delete Campaign
+  let delete_button = CardService.newTextButton()
+    .setText('Delete Campaign')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('deleteCampaign'))
+  let delete_section = CardService.newCardSection()
+    .addWidget(delete_button)
+
+  //Compile the card
+  var card = CardService.newCardBuilder()
+    .addSection(top_section)
+    .addSection(actions_section)
+    .addSection(delete_section)
+    .setFixedFooter(createFixedFooter())
+
+  return card.build()
+
+}
+/**
+ * @param {*} e event with potential parameters
+ * @returns {navigation} a navigation to the New Campaign card
+ */
+function showActiveCampaignCard(e) {
+  return CardService.newActionResponseBuilder()
+      .setNavigation(CardService.newNavigation().pushCard(createActiveCampaignCard(JSON.parse(e.formInput.selection))))
+      .build();
+}
+/**
+ * This seems so wrong but just a workaround for right now
+ * @param {*} e event with potential parameters
+ * @returns {navigation} a navigation to the New Campaign card
+ */
+function showActiveCampaignCard1(campaign) {
+  return CardService.newActionResponseBuilder()
+      .setNavigation(CardService.newNavigation().popToRoot())
+      .setNavigation(CardService.newNavigation().pushCard(createActiveCampaignCard(campaign)))
+      .build();
+}
+
+/**
+ * @returns {CardService.Card} Assembled generator interface card
+ */
+function createGeneratorCard(campaign) {
+  //Top section
+  let top_paragraph = CardService.newTextParagraph()
+    .setText(campaign['name'])
+  var top_section = CardService.newCardSection()
+    .addWidget(top_paragraph)
+  
+  //Instructions section
+  let instruction_paragraph = CardService.newTextParagraph()
+    .setText(`
+      Instructions\n
+      1. Copy paste agency names and email addresses into the generator spreadsheet\n
+      2. Create request drafts\n
+      3. Send request drafts (note that restarting this process before sending will result in duplicate drafts)
+      `)
+  var instruction_section = CardService.newCardSection()
+    .addWidget(instruction_paragraph)
+
+  //Open Generator
+  let generator_button = CardService.newTextButton()
+    .setText('Open Generator')
+    .setOpenLink(CardService.newOpenLink()
+      .setUrl(campaign['generator']))
+  //Draft Requests
+  let draft_button = CardService.newTextButton()
+    .setText('Draft Requests')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('draftRequests')
+                                 .setParameters({campaign: JSON.stringify(campaign)}))
+  //Send Requests
+  let send_button = CardService.newTextButton()
+    .setText('Send Request Drafts')
+    .setOnClickAction(CardService.newAction()
+                                 .setFunctionName('sendDraftRequests')
+                                 .setParameters({campaign: JSON.stringify(campaign)}))
+  let generate_section = CardService.newCardSection()
+                                    .addWidget(generator_button)
+                                    .addWidget(draft_button)
+                                    .addWidget(send_button)
+  let card = CardService.newCardBuilder()
+                        .addSection(top_section)
+                        .addSection(instruction_section)
+                        .addSection(generate_section)
+                        .setFixedFooter(createFixedFooter())
+              
+  return card.build()
+}
+/**
+ * @returns {navigation} a navigation to the New Campaign card
+*/ 
+function showGeneratorCard(e) {
+  return CardService.newActionResponseBuilder()
+  .setNavigation(CardService.newNavigation().pushCard(createGeneratorCard(JSON.parse(e.parameters.camp))))
+  .build();
+}
+
+/**
+ * Create drafts for requests and store their ids in properties
+ * @returns {null}
+ */
+function draftRequests(e) {
+  //deserialize json for active campaign data
+  let campaign = JSON.parse(e.parameters.campaign);
+
+  //get template info
+  var template = DocumentApp.openByUrl(campaign['template']);
+  var text = template.getBody()
+                     .getText();
+
+  //get generator info
+  let sheet = SpreadsheetApp.openByUrl(campaign['generator']).getSheets()[0];
+  let range = sheet.getRange('A2:B');
+  let data = range.getValues();
+
+  //get parent label
+  let par_label = GmailApp.getUserLabelByName(campaign['name']);
+
+  //loop through generator rows and create drafts, applying labels 
+  for (var i = 0; i < sheet.getLastRow() - 1; i++) {
+    var agency_name = data[i][0]; //unhardcode later!
+    var agency_address = data[i][1];
+    var draft = GmailApp.createDraft(agency_address, 'Request to inspect records', text);
+    
+    var thread = draft.getMessage().getThread();
+    var new_label_str = `${campaign['name']}/${agency_name}`;
+    var new_label = GmailApp.createLabel(new_label_str);
+
+    thread.addLabel(par_label);
+    thread.addLabel(new_label);
+    //thread.addLabel(GmailApp.getUserLabelByName('Unsent Request')); //wait we don't need this right...
+  }
+
+
+}
+
+/**
+ * Send pending requests for the currently active campaign
+ * @returns {null}
+ */
+
+function sendDraftRequests(e) {
+  //Deserialize the json for campaign
+  let campaign = JSON.parse(e.parameters.campaign);
+
+  //Grab the unsent messages and parent label
+  let all_drafts = GmailApp.getDrafts();
+  let par_label = GmailApp.getUserLabelByName(campaign['name']);
+
+  //Grab generator and status tracker sheet info
+  let generator_sheet = SpreadsheetApp.openByUrl(campaign['generator']).getSheets()[0];
+  let range = generator_sheet.getRange('A2:B');
+  let generator_data = range.getValues();
+
+
+  let generator_last_row = generator_sheet.getLastRow();
+
+  let tracker_sheet = SpreadsheetApp.openByUrl(campaign['tracker']).getSheets()[0];
+
+  for (var d of all_drafts) {
+    //Check if this draft is for this campaign
+    if (d.getMessage().getThread().getLabels().includes(par_label)) {
+      var old_labels = d.getMessage().getThread().getLabels();
+      
+      //Send message in between because doesn't d lowk disappear after this?
+      var message = d.send();
+      
+      //Cuz apparently we have to re-add labels...
+      for (var l of old_labels) {
+        message.getThread().addLabel(l);
+      }
+
+      let agency_name;
+      //search for the agency name (VERY BAD THIS IS O(DRAFTS^2) COMPLEXITY)
+      for (var i = 0; i < generator_last_row; i++) {
+        if (generator_data[i][1] == message.getTo()) { //unhardcode
+          agency_name = generator_data[i][0];
+          break;
+        } 
+  
+      }
+
+      //Make request folder and fill in status tracker (TODO: add pdfing of initial request)
+
+      let sub_folder = DriveApp.createFolder(agency_name);
+      let par_folder = DriveApp.getFolderById(campaign['folder']);
+      sub_folder.moveTo(par_folder);
+
+      tracker_sheet.appendRow(['for later', agency_name, message.getTo(), 'sent', message.getThread().getPermalink(), sub_folder.getUrl()])
+
+    }
+  }
+
+
+
+}
+
 
 
 

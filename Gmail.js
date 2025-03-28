@@ -23,7 +23,7 @@ function onGmailMessage(e) {
         .replace(/^\[.*?\]\s*/, '');
 
     // If neccessary, truncate the subject to fit in the image.
-    subject = truncate(subject);
+    //subject = truncate(subject);
 
     return createCatCard(subject);
 }
