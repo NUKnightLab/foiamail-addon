@@ -117,12 +117,18 @@ function initCheck() {
     props.setProperty('archivedCampaigns', JSON.stringify([]))
     //props.setProperty('rootId', '1OxoVVN5t7gZ_koZqxmnTUinC1PmI4hmL') //unhardcode later (do we need this... lowk no)
     props.setProperty('initialized', JSON.stringify({name: true}))
-    props.setProperty('readyDraftIds', JSON.stringify([]))
+    //props.setProperty('readyDraftIds', JSON.stringify([]))
     
     // What other data do we need? 
 
     //Random thing I guess we should initialize when they start using the service
-    GmailApp.createLabel('Unsent Request')
+    //GmailApp.createLabel('Unsent Request')
+
+    //workaround for aliasing that's pretty stupid plz ignore for now
+    let test_draft = GmailApp.createDraft('william.tong203@gmail.com', 'nothing', 'nothing'); //unhardcode
+    let userAddress = test_draft.getMessage().getFrom();
+    props.setProperty('userAddress', JSON.stringify({name: userAddress}));
+
   }
   return
 }
@@ -146,8 +152,57 @@ function reset() {
  * Delete a Campaign
  * @return {null}
  */
-function deleteCampaign() {
-  return
+function deleteCampaign(e) {
+  let campaign = JSON.parse(e.parameters.campaign)
+
+  //delete associated drafts
+  let par_label = GmailApp.getUserLabelByName(campaign['name'])
+  let campaign_drafts = GmailApp.getDrafts()
+
+  for (var draft of campaign_drafts) {
+    if (draft.getMessage().getThread().getLabels().includes(par_label)) {
+      draft.deleteDraft()
+    }
+  }
+
+  //archive associated messages
+  let campaign_threads = par_label.getThreads()
+
+  for (var thread of campaign_threads) {
+    thread.moveToArchive()
+  }
+
+  //remove all labels
+  /*
+  for (l of GmailApp.getUserLabels()) {
+    if (l.getName().startsWith(campaign['name'])) {
+      l.deleteLabel();
+    }
+  }
+  */
+  par_label.deleteLabel();
+
+  //trash the folder
+  let folder = DriveApp.getFolderById(campaign['folder']);
+  folder.setTrashed(true);
+
+  //remove from properties
+  let props = PropertiesService.getScriptProperties();
+  let open_campaigns = JSON.parse(props.getProperty('openCampaigns'));
+  
+  let campaign_index = 0;
+  for (var i = 0; i < open_campaigns.length; i++) {
+    if (open_campaigns[i]['name'] == campaign['name']) {
+      break;
+    }
+    campaign_index += 1
+  }
+  open_campaigns.splice(campaign_index, 1);
+  props.setProperty('openCampaigns', JSON.stringify(open_campaigns));
+
+  return CardService.newActionResponseBuilder()
+                    .setNavigation(CardService.newNavigation().popToRoot())
+                    .build();
 }
 
 
@@ -233,6 +288,13 @@ function createCampaign(e) {
   camp['description'] = input.campaign_desc;
   camp['template'] = input.campaign_temp;
 
+  if (input.aliasing == 'true') {
+    camp['aliasing'] = 1
+  }
+  else {
+    camp['aliasing'] = 0
+  }
+
   //Create new gmail label, tracker and folder for this campaign
   //Set the campaign class with this info (urls for now)
   GmailApp.createLabel(camp['name']);
@@ -244,20 +306,33 @@ function createCampaign(e) {
   DriveApp.getFileById(tracker_sheet.getId()).moveTo(folder);
   camp['tracker'] = tracker_sheet.getUrl();
   let track_sheet = tracker_sheet.getSheets()[0];
-  track_sheet.appendRow(['request_id', 
-                         'agency_name',
-                         'agency_email',
-                         'status', 
-                         'thread_link', 
-                         'folder_link']);
   
+  if (camp['tracker'] == 0) {
+    track_sheet.appendRow(['request_id', 
+                          'agency_name',
+                          'agency_email',
+                          'status', 
+                          'thread_link', 
+                          'folder_link']);
+  }
+  else {
+    track_sheet.appendRow(['request_id', 
+      'agency_name',
+      'agency_email',
+      'reply_to',
+      'status', 
+      'thread_link', 
+      'folder_link']);
+    camp['requestCount'] = 0;
+      
+  }
 
   let generator_sheet = SpreadsheetApp.create('Request Generator');
   DriveApp.getFileById(generator_sheet.getId()).moveTo(folder);
   camp['generator'] = generator_sheet.getUrl();
   let gen_sheet = generator_sheet.getSheets()[0];
-  gen_sheet.appendRow(['agency_name', 'agency_email']);
-
+  gen_sheet.appendRow(['agency_name', 'agency_email', 'request_id']);
+  
 
   //Add this campaign to the script properties
 
@@ -298,7 +373,7 @@ function createNewCampaignCard() {
   const description_input = CardService.newTextInput()
                              .setFieldName('campaign_desc')
                              .setTitle('Describe your campaign')
-                             .setHint('My campaign is for tktk')
+                             .setHint('My campaign is for ...')
                              .setMultiline(true)
   var description_section = CardService.newCardSection()
     .addWidget(description_input)
@@ -328,10 +403,26 @@ function createNewCampaignCard() {
     .addWidget(template_input)
     //.addWidget(picker_button)
 
+  // Aliasing toggle section
+
+  const switchDecoratedText =
+    CardService.newDecoratedText()
+        .setTopLabel('Alias-based tracking')
+        .setText('Turn aliasing on?')
+        .setWrapText(true)
+        .setSwitchControl(
+            CardService.newSwitch()
+                .setFieldName('aliasing')
+                .setValue('true')
+        );
+  
+  const selection_section = CardService.newCardSection()
+                                       .addWidget(switchDecoratedText)
+
   // Submit section
   
   let submit_button = CardService.newTextButton()
-    .setText('Submit')
+    .setText('Create')
     .setOnClickAction(CardService.newAction()
                                  .setFunctionName('createCampaign'))
                                  
@@ -346,6 +437,7 @@ function createNewCampaignCard() {
     .addSection(name_section)
     .addSection(description_section)
     .addSection(template_section)
+    //.addSection(selection_section)
     .addSection(submit_section)
 
     .setFixedFooter(createFixedFooter());
@@ -403,7 +495,8 @@ function createActiveCampaignCard(campaign) {
   let delete_button = CardService.newTextButton()
     .setText('Delete Campaign')
     .setOnClickAction(CardService.newAction()
-                                 .setFunctionName('deleteCampaign'))
+                                 .setFunctionName('deleteCampaign')
+                                 .setParameters({campaign: JSON.stringify(campaign)}))
   let delete_section = CardService.newCardSection()
     .addWidget(delete_button)
 
@@ -504,6 +597,9 @@ function showGeneratorCard(e) {
 function draftRequests(e) {
   //deserialize json for active campaign data
   let campaign = JSON.parse(e.parameters.campaign);
+  let props = PropertiesService.getScriptProperties();
+  let user_address = props.getProperty('userAddress')
+
 
   //get template info
   var template = DocumentApp.openByUrl(campaign['template']);
@@ -512,17 +608,51 @@ function draftRequests(e) {
 
   //get generator info
   let sheet = SpreadsheetApp.openByUrl(campaign['generator']).getSheets()[0];
-  let range = sheet.getRange('A2:B');
+  let range = sheet.getRange('A2:C');
   let data = range.getValues();
+  
+  let targetrange = sheet.getRange('A2:C');
+  let targetvalues = targetrange.getValues();
 
   //get parent label
   let par_label = GmailApp.getUserLabelByName(campaign['name']);
+  var draft_count = 0;
 
   //loop through generator rows and create drafts, applying labels 
   for (var i = 0; i < sheet.getLastRow() - 1; i++) {
     var agency_name = data[i][0]; //unhardcode later!
     var agency_address = data[i][1];
-    var draft = GmailApp.createDraft(agency_address, 'Request to inspect records', text);
+
+    var draft;
+
+    //create an identifier, add to generator to track;
+
+    var idString = (Math.random()).toString().split('0.')[1];
+    targetvalues[i][2] = idString;
+    
+
+    // you have to make the new forwarding address first which is much more involved 
+    // (may require verification of account?)
+    if (campaign['aliasing'] == 1) {
+      var reply_to = user_address.split('@')[0] + '+' + campaign['requestCount'] + '@' + user_address.split('@')[1]
+      draft = GmailApp.createDraft(agency_address, 'Request to inspect records', text + `\n${idString}\n`, {replyTo: reply_to});
+      campaign['requestCount'] += 1;
+    }
+    else {
+      draft = GmailApp.createDraft(agency_address, 'Request to inspect records', text + `\n#$${idString}#$\n`);
+    }
+    
+    
+    /*
+    if (campaign['aliasing'] == 1) {
+      var from = draft.getMessage().getFrom();
+      var reply_to = from.split('@')[0] + '+' + toString(campaign['count']) + '@' + from.split('@')[1]
+      draft = draft.update(agency_address, 
+                           'Request to inspect records', 
+                           text, 
+                           {from: 'wtong0692@gmail.com',})
+    }
+    */
     
     var thread = draft.getMessage().getThread();
     var new_label_str = `${campaign['name']}/${agency_name}`;
@@ -531,9 +661,17 @@ function draftRequests(e) {
     thread.addLabel(par_label);
     thread.addLabel(new_label);
     //thread.addLabel(GmailApp.getUserLabelByName('Unsent Request')); //wait we don't need this right...
+
+    draft_count += 1;
   }
 
+  //flush ids to the generator 
+  targetrange.setValues(targetvalues);
 
+  return CardService.newActionResponseBuilder()
+                    .setNotification(CardService.newNotification()
+                                                .setText(`Drafted ${draft_count} requests!`))
+                    .build();
 }
 
 /**
@@ -551,13 +689,14 @@ function sendDraftRequests(e) {
 
   //Grab generator and status tracker sheet info
   let generator_sheet = SpreadsheetApp.openByUrl(campaign['generator']).getSheets()[0];
-  let range = generator_sheet.getRange('A2:B');
+  let range = generator_sheet.getRange('A2:C');
   let generator_data = range.getValues();
 
 
   let generator_last_row = generator_sheet.getLastRow();
 
   let tracker_sheet = SpreadsheetApp.openByUrl(campaign['tracker']).getSheets()[0];
+  var sent_count = 0;
 
   for (var d of all_drafts) {
     //Check if this draft is for this campaign
@@ -572,6 +711,19 @@ function sendDraftRequests(e) {
         message.getThread().addLabel(l);
       }
 
+      
+      var message_id = message.getBody().split('#$')[1];
+      var agency_name;
+      
+      //search for the agency name (VERY BAD THIS IS O(DRAFTS^2) COMPLEXITY)
+      for (var i = 0; i < generator_last_row; i++) {
+        if (generator_data[i][2] == message_id) { //unhardcode
+          agency_name = generator_data[i][0];
+          break;
+        } 
+      }
+      
+      /*
       let agency_name;
       //search for the agency name (VERY BAD THIS IS O(DRAFTS^2) COMPLEXITY)
       for (var i = 0; i < generator_last_row; i++) {
@@ -579,22 +731,28 @@ function sendDraftRequests(e) {
           agency_name = generator_data[i][0];
           break;
         } 
-  
       }
+      */
 
       //Make request folder and fill in status tracker (TODO: add pdfing of initial request)
-
       let sub_folder = DriveApp.createFolder(agency_name);
       let par_folder = DriveApp.getFolderById(campaign['folder']);
       sub_folder.moveTo(par_folder);
 
-      tracker_sheet.appendRow(['for later', agency_name, message.getTo(), 'sent', message.getThread().getPermalink(), sub_folder.getUrl()])
-
+      tracker_sheet.appendRow([message_id, 
+                               agency_name, 
+                               message.getReplyTo(),
+                               message.getTo(), 
+                               'sent', 
+                               message.getThread().getPermalink(), 
+                               sub_folder.getUrl()])
+      sent_count += 1;
     }
   }
-
-
-
+  return CardService.newActionResponseBuilder()
+                    .setNotification(CardService.newNotification()
+                                                .setText(`Sent ${sent_count} requests!`))
+                    .build();
 }
 
 
@@ -672,14 +830,13 @@ function createHomepageCard() {
     .addWidget(folder_opener_button)
   var card = CardService.newCardBuilder()
     .addSection(section)
-    .addSection(CardService.newCardSection()
-      .addWidget(mailmerge_button))
+    //.addSection(CardService.newCardSection()
+    //  .addWidget(mailmerge_button))
     .addSection(CardService.newCardSection()
       .addWidget(new_campaign_button))
     .addSection(selection_section)
     .setFixedFooter(createFixedFooter());
   return card.build()
-  
 }
 
 

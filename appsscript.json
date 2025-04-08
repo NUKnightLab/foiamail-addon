@@ -58,6 +58,9 @@
         "runFunction": "onDocsHomepage",
         "enabled": true
       }
+    },
+    "sheets": {
+      
     }
   }
 }
