@@ -26,4 +26,17 @@ function getSpreadsheetAsObjects(doc_id) {
         rows.push(obj)
     }
     return rows
+} 
+
+
+/**
+ * @param {*} e some event
+ * @returns {null}
+ */
+function onOpen(e) {
+    SpreadsheetApp.getUi() // Or DocumentApp, SlidesApp, or FormApp.
+      .createMenu('Custom Menu')
+      .addItem('First item', 'menuItem1')
+      .addToUi();
 }
+
