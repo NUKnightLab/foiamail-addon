@@ -84,9 +84,9 @@ click the `deploy` button and choose `Test deployments`  Under the "deployments"
 
 Then, as you make changes:
 
-```clasp push && clasp deploy -i <YOUR_DEPLOYMENT_ID```  
+```clasp push && clasp deploy -d <FRIENDLY_DEPLOYMENT_NAME> -i <YOUR_DEPLOYMENT_ID>```  
 
-This will update the code associated with your installed test deployment. *If you forget the `clasp deploy`, or if you forget to specify the deployment identifier with `-i`, you won't see the changes you pushed.*    
+This will update the code associated with your installed test deployment. *If you forget the `clasp push` or the `clasp deploy`, or if you forget to specify the deployment identifier with `-i`, you won't see the changes you pushed.*    
 
 While the app is in testing mode, in order to grant the add-on permission to access your GMail, etc, your Google Account must be added to the Google Cloud test users list by Joe Germuska ([APIS & Services > OAuth Consent Screen](https://console.cloud.google.com/auth/audience?project=foiamail-addon)). You can still deploy the add-on but you'll get an error when you try go through the "Authorize Access" step.
 
