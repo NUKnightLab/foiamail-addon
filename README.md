@@ -4,20 +4,31 @@ A Google Workspace add-on to support journalists making FOIA requests
 
 ## Onboarding, permissions, access
 
-To work on the project, you will need to have [the Google Scripts project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit) shared with you, with Editor privileges. Provide your primary Google account to Joe Germuska or another leader on the project, and they will share it with you.
+To work on the project, you will need to have [the Google Scripts project](https://script.google.com/home/projects/1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1/edit) shared with you, with Editor privileges. **You may want to create a separate Google account for testing**, to make sure that nothing that the app does inadvertently affects your primary account. 
 
-**You may want to create a separate Google account for testing**, to make sure that nothing that the app does inadvertently affects your primary account. This account will also need to have the project shared with it, so that it can install test deployments of the project.
+Provide your Google account to Joe Germuska or another leader on the project, and they will share the Google Scripts project with you. **Note**: You must use a regular Google account, not a `u.northwestern.edu` account.
 
 While the app is in testing mode, any account that installs a test deployment also needs to be added to the Google Cloud test users list by Joe Germuska ([APIS & Services > OAuth Consent Screen](https://console.cloud.google.com/auth/audience?project=foiamail-addon)). If this is skipped, you can still deploy the add-on but you'll get an error when you try go through the "Authorize Access" step.
 
-Instructions below also assume that you have `npm` (Node Package Manager) installed, as well as some `git` client. Git examples in the docs will be based on the git command-line tool; if you prefer to use another Git client, you may need to translate.
+Once the project has been shared with you, you will also need to enable the Apps Script API. Enable it by visiting https://script.google.com/home/usersettings Under "Settings", click on "Google Apps Script API", and on the next page, click the toggle next to "enable" so that it is blue, not gray.
 
-We use the [`clasp` command line tool](https://developers.google.com/apps-script/guides/clasp) to push code changes to Google App Scripts.
+### Using the terminal
+Working on this project involves several command-line tools. You can run these in a terminal on your computer, or in a terminal emulator in your IDE (like VSCode). If you don't know how to do this, ask for help.
 
-Start by cloning this repository, if you haven't.
+### Installing Node
+You must install Node.js, the JavaScript runtime, in order to use the `clasp` command line tool. If you haven't installed it before, follow the instructions here: https://nodejs.org/en/download
+
+### Installing Git
+You must install `git`. If you haven't installed it before, follow the instructions here: https://git-scm.com/downloads — we strongly encourage installing the command line version, but if you prefer a GUI, you can use that too. 
+
+When you have `git` installed, clone the repository that contains this README file, if you haven't already.
 
 ### Install clasp
+We use [`clasp`](https://developers.google.com/apps-script/guides/clasp) to push code changes to Google App Scripts.
+
 `clasp` is a command line tool that helps us ensure consistency when making changes to the Apps Script project. 
+
+Run the following commands to install `clasp` and log in to your Google account
 
 ```bash
 npm install @google/clasp -g
@@ -25,7 +36,7 @@ clasp login
 ```
 
 Then, in the git repo directory, `clasp clone` the project using the correct script ID.
-```
+```bash
 clasp clone 1Z0kUz4KJ3sOGYUeSdbG5WBZS57ubBDM_hcmXsIsJCilYGTtYt7Ygf5_1
 ```
 
@@ -42,7 +53,7 @@ This is our first time working as a team to develop a Google Workspace add-on. W
 
 GitHub should be treated as the canonical version of project code. While `clasp` allows you to `clasp pull` the current code from `script.google.com`, this should not be used. Use normal git/GitHub features to update your code, merge changes, make branches for your development work and submit pull requests when you have code that is ready to be merged into the `main` branch.
 
-Pushing code to any GitHub branch is independent of pushing it to `script.google.com` for testing. (Maybe there's a way to use Git commit hooks to make it smoother?)
+Pushing code to any GitHub branch is independent of pushing it to `script.google.com` for testing. You will use `clasp deploy` to push code to the Google App Scripts project. Note that you can deploy code with clasp that hasn't been pushed to the GitHub repository. This is fine for testing, but you should not do this for code that is on the path to public deployment.
 
 ## Testing
 
@@ -73,9 +84,9 @@ click the `deploy` button and choose `Test deployments`  Under the "deployments"
 
 Then, as you make changes:
 
-```clasp push && clasp deploy -i <YOUR_DEPLOYMENT_ID```  
+```clasp push && clasp deploy -d <FRIENDLY_DEPLOYMENT_NAME> -i <YOUR_DEPLOYMENT_ID>```  
 
-This will update the code associated with your installed test deployment. *If you forget the `clasp deploy`, or if you forget to specify the deployment identifier with `-i`, you won't see the changes you pushed.*    
+This will update the code associated with your installed test deployment. *If you forget the `clasp push` or the `clasp deploy`, or if you forget to specify the deployment identifier with `-i`, you won't see the changes you pushed.*    
 
 While the app is in testing mode, in order to grant the add-on permission to access your GMail, etc, your Google Account must be added to the Google Cloud test users list by Joe Germuska ([APIS & Services > OAuth Consent Screen](https://console.cloud.google.com/auth/audience?project=foiamail-addon)). You can still deploy the add-on but you'll get an error when you try go through the "Authorize Access" step.
 
