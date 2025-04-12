@@ -1,7 +1,13 @@
 {
   "timeZone": "America/Chicago",
   "dependencies": {
-    "enabledAdvancedServices": []
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Gmail",
+        "version": "v1",
+        "serviceId": "gmail"
+      }
+    ]
   },
   "exceptionLogging": "STACKDRIVER",
   "oauthScopes": [
@@ -17,12 +23,14 @@
     "https://www.googleapis.com/auth/gmail.compose",
     "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/gmail.addons.execute"
+    "https://www.googleapis.com/auth/gmail.addons.execute",
+    "https://www.googleapis.com/auth/gmail.labels",
+    "https://www.googleapis.com/auth/gmail.settings.basic"
   ],
   "runtimeVersion": "V8",
   "addOns": {
     "common": {
-      "name": "FOIAMail",
+      "name": "FOIAMail WTV",
       "logoUrl": "https://uploads.knightlab.com/paper_airplane.png",
       "useLocaleFromApp": true,
       "homepageTrigger": {
@@ -59,8 +67,6 @@
         "enabled": true
       }
     },
-    "sheets": {
-      
-    }
+    "sheets": {}
   }
 }
