@@ -30,7 +30,7 @@
   "runtimeVersion": "V8",
   "addOns": {
     "common": {
-      "name": "FOIAMail WTV",
+      "name": "FOIAMail",
       "logoUrl": "https://uploads.knightlab.com/paper_airplane.png",
       "useLocaleFromApp": true,
       "homepageTrigger": {

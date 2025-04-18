@@ -42,6 +42,22 @@ function createFOIAMailFolder() {
   return folder;
 }
 
+
+/**
+ * @return {null}
+ * test to figure out limits of apps script quotas 
+ */
+function sadTest() {
+  
+  let label = GmailApp.getUserLabelByName('testlabel')
+  for (i = 0; i < 1000; i++) {
+    var body_text = "Writing four lines of email body:\n Please work please work \n why won't it work \n ooooooof";
+    var draft = GmailApp.createDraft('william.tong203@gmail.com', 'sadTest', body_text);
+    draft.getMessage().getThread().addLabel(label)
+  }
+  return
+}
+
 /**
  * Creates a fixed footer with a primary button
  * @param {string} buttonText The text for the primary button
@@ -58,6 +74,7 @@ function createFixedFooter() {
     .setText('View properties')
     .setOnClickAction(CardService.newAction()
                                  .setFunctionName('showPropertiesCard')));
+  console.log('done')
   return footer
 }
 
@@ -214,14 +231,12 @@ function deleteCampaign(e) {
   let props = PropertiesService.getScriptProperties();
   let open_campaigns = JSON.parse(props.getProperty('openCampaigns'));
   
-  let campaign_index = 0;
   for (var i = 0; i < open_campaigns.length; i++) {
     if (open_campaigns[i]['name'] == campaign['name']) {
-      break;
+      open_campaigns.splice(i, 1);
     }
-    campaign_index += 1
   }
-  open_campaigns.splice(campaign_index, 1);
+ 
   props.setProperty('openCampaigns', JSON.stringify(open_campaigns));
 
   return CardService.newActionResponseBuilder()
@@ -620,7 +635,7 @@ function showGeneratorCard(e) {
 function tagText(id, text) {
   let word_list = text.split('\n')
   let middle_list = word_list[Math.round(word_list.length / 2)].split(' ')
-  middle_list.splice(Math.round(word_list.length / 2) + 1, 0, `%@${id}%@`)
+  middle_list.splice(Math.round(word_list.length / 2), 0, `%@${id}%@`)
   let new_middle = middle_list.join(' ')
   word_list.splice(Math.round(word_list.length / 2), 1, new_middle)
   let new_text = word_list.join('\n')
@@ -664,7 +679,7 @@ function draftRequests(e) {
 
     //create an identifier, add to generator to track;
 
-    var idString = (Math.random()).toString().split('0.')[1];
+    var idString = `${agency_name}/${campaign['requestCount']}`;
     targetvalues[i][2] = idString;
     
 
@@ -692,18 +707,37 @@ function draftRequests(e) {
     */
     
     var thread = draft.getMessage().getThread();
-    var new_label_str = `${campaign['name']}/${agency_name}`;
-    var new_label = GmailApp.createLabel(new_label_str);
+
+    var agency_label_str = `${campaign['name']}/${agency_name}`;
+    var agency_label = GmailApp.createLabel(agency_label_str);
+
+    var req_label_str = `${campaign['name']}/${agency_name}/${campaign['requestCount']}`;
+    var req_label = GmailApp.createLabel(req_label_str);
 
     thread.addLabel(par_label);
-    thread.addLabel(new_label);
+    thread.addLabel(agency_label);
+    thread.addLabel(req_label);
     //thread.addLabel(GmailApp.getUserLabelByName('Unsent Request')); //wait we don't need this right...
-
+    campaign['requestCount'] += 1;
+    
+    if (draft_count != 0 && (draft_count % 5) == 0) {
+      Utilities.sleep(5000);
+    }
+    
     draft_count += 1;
   }
 
   //flush ids to the generator 
   targetrange.setValues(targetvalues);
+
+  // update request count in properties
+  let openCampaigns = JSON.parse(props.getProperty('openCampaigns'))
+  for (i = 0; i < openCampaigns.length; i++) {
+    if (campaign['name'] == openCampaigns[i]['name']) {
+      openCampaigns.splice(i, 1, campaign);
+    }
+  }
+  props.setProperty('openCampaigns', JSON.stringify(openCampaigns));
 
   return CardService.newActionResponseBuilder()
                     .setNotification(CardService.newNotification()
@@ -734,6 +768,8 @@ function sendDraftRequests(e) {
 
   let tracker_sheet = SpreadsheetApp.openByUrl(campaign['tracker']).getSheets()[0];
   var sent_count = 0;
+
+  let target_data = [];
 
   for (var d of all_drafts) {
     //Check if this draft is for this campaign
@@ -778,18 +814,28 @@ function sendDraftRequests(e) {
       let par_folder = DriveApp.getFolderById(campaign['folder']);
       sub_folder.moveTo(par_folder);
 
-      tracker_sheet.appendRow([message_id, 
-                               agency_name, 
-                               agency_address,
-                               message.getTo(),
-                               new Date(), 
-                               'sent',
-                               '', 
-                               message.getThread().getPermalink(), 
-                               sub_folder.getUrl()])
+      target_data.push([message_id, 
+                          agency_name, 
+                          agency_address,
+                          message.getTo(),
+                          new Date(), 
+                          'sent',
+                          '', 
+                          message.getThread().getPermalink(), 
+                          sub_folder.getUrl()]);
+      
+      //sleep for a bit maybe
+      
+      if (sent_count != 0 && (sent_count % 5) == 0) {
+        Utilities.sleep(5000);
+      }  
+
       sent_count += 1;
     }
   }
+
+  target_range = tracker_sheet.getRange(tracker_sheet.getLastRow() + 1, 1, tracker_sheet.getLastRow() + target_data.length - 1, 9)
+  target_range.setValues(target_data);
   return CardService.newActionResponseBuilder()
                     .setNotification(CardService.newNotification()
                                                 .setText(`Sent ${sent_count} requests!`))
@@ -864,6 +910,12 @@ function createHomepageCard() {
       CardService.newAction()
                  .setFunctionName('composeMailMergeDrafts'));
 
+  let sadtest_button = CardService.newTextButton()
+    .setText('Sad Test')
+    .setOnClickAction(
+        CardService.newAction()
+                   .setFunctionName('sadTest'));
+
 
   // Assemble the widgets and return the card.
   var section = CardService.newCardSection()
@@ -876,6 +928,8 @@ function createHomepageCard() {
     .addSection(CardService.newCardSection()
       .addWidget(new_campaign_button))
     .addSection(selection_section)
+    .addSection(CardService.newCardSection()
+      .addWidget(sadtest_button))
     .setFixedFooter(createFixedFooter());
   return card.build()
 }
